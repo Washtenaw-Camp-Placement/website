@@ -42,7 +42,9 @@ updated: 2026-06-01
 
 ::::: columns 1/5 1/5 1/5 1/5 1/5
 :::: column
-![638](/images/2026/01/camperships-awarded.png)
+::: stat circle
+638
+:::
 
 ::: quote
 Camperships awarded since the pandemic
@@ -50,7 +52,9 @@ Camperships awarded since the pandemic
 ::::
 
 :::: column
-![1962](/images/2026/01/year-started.png)
+::: stat plain
+1962
+:::
 
 ::: quote
 The year we started
@@ -58,7 +62,9 @@ The year we started
 ::::
 
 :::: column
-![Zero dollars](/images/2026/01/cost-to-families.png)
+::: stat bill
+$0
+:::
 
 ::: quote
 Cost to all of the families we serve
@@ -66,7 +72,9 @@ Cost to all of the families we serve
 ::::
 
 :::: column
-![140](/images/2026/01/camperships-2026.png)
+::: stat person
+140
+:::
 
 ::: quote
 Camperships awarded for the summer of 2026
@@ -74,7 +82,9 @@ Camperships awarded for the summer of 2026
 ::::
 
 :::: column
-![900 dollars](/images/2026/01/average-cost.png)
+::: stat bill
+$900
+:::
 
 ::: quote
 Average cost to a typical family for a week of sleepaway summer camp
