@@ -1,6 +1,7 @@
 # Washtenaw Camp Placement website (static version)
 
 This is a trial copy of washtenawcampplacement.org built without WordPress.
+It is serving right now at https://washtenaw-camp-placement.github.io/website/. 
 Every page is a plain text file in [`content/`](content/). Pictures are in
 [`public/images/`](public/images/). Note that the real site is
 still WordPress.  This version is live at https://washtenawcampplacement.netlify.app/
