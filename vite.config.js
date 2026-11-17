@@ -17,6 +17,8 @@ const CONTENT = fileURLToPath(new URL('./content', import.meta.url));
 //   :::: column
 //   ::: details Question {open}   accordion item
 //   ::: quote                green emphasised text
+//   ::: stat circle          number tile; the number goes inside, e.g. 638
+//                            shapes: circle, person, bill, plain
 //
 // Outer containers need more colons than the ones nested inside them.
 // ---------------------------------------------------------------------------
@@ -56,6 +58,14 @@ md.use(container, 'details', {
     const open = /\{open\}\s*$/.test(title);
     title = title.replace(/\s*\{open\}\s*$/, '');
     return `<details class="accordion"${open ? ' open' : ''}><summary>${md.renderInline(title)}</summary><div>\n`;
+  },
+});
+
+md.use(container, 'stat', {
+  render(tokens, i) {
+    if (tokens[i].nesting !== 1) return '</div>\n';
+    const shape = tokens[i].info.trim().split(/\s+/)[1] || 'circle';
+    return `<div class="stat stat-${/^[a-z]+$/.test(shape) ? shape : 'circle'}">\n`;
   },
 });
 
