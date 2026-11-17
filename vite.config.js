@@ -137,6 +137,18 @@ function footer(site) {
 // file per URL at build time so every page works without JavaScript.
 // ---------------------------------------------------------------------------
 
+// Built pages use relative links so the site works at any base path
+// (https://washtenawcampplacement.org/ or https://<org>.github.io/website/).
+// Content keeps writing root-absolute links ("/team/"); these turn them into
+// "./team/" or "../../team/" depending on how deep the page lives.
+const prefixFor = (url) => '../'.repeat(url.split('/').filter(Boolean).length) || './';
+const relativize = (html, url) => html.replace(/(\s(?:href|src)=")\/(?!\/)/g, `$1${prefixFor(url)}`);
+
+// 404.html is served from whatever URL was missing, so relative links can't work there.
+// It gets a <base> instead: BASE_PATH is the site's path, e.g. "/website" (GitHub Pages
+// without a custom domain) or empty (custom domain, Netlify).
+const BASE = `${(process.env.BASE_PATH || '').replace(/\/+$/, '')}/`;
+
 function wcpContent() {
   const ID = 'virtual:pages';
   let data = loadSite();
@@ -174,28 +186,30 @@ function wcpContent() {
     },
     closeBundle() {
       const shell = fs.readFileSync(path.join(outDir, 'index.html'), 'utf8');
-      const page = (title, body, extraHead = '') =>
+      const page = (url, title, body, extraHead = '') => relativize(
         shell
           .replace(/<title>.*?<\/title>/, `<title>${esc(title)}</title>${extraHead}`)
-          .replace('<main id="content"></main>', `<main id="content">${body}</main>`);
+          .replace('<main id="content"></main>', `<main id="content">${body}</main>`), url);
 
       for (const p of data.pages) {
         const canonical = `<link rel="canonical" href="${data.site.url}${p.url}">` +
           (p.description ? `<meta name="description" content="${esc(p.description)}">` : '');
         const file = path.join(outDir, p.url, 'index.html');
         fs.mkdirSync(path.dirname(file), { recursive: true });
-        fs.writeFileSync(file, page(titleFor(p), p.html, canonical));
+        fs.writeFileSync(file, page(p.url, titleFor(p), p.html, canonical));
         for (const a of p.aliases) {
           const af = path.join(outDir, a, 'index.html');
           fs.mkdirSync(path.dirname(af), { recursive: true });
-          fs.writeFileSync(af, `<!doctype html><meta charset="utf-8"><title>Redirecting…</title><link rel="canonical" href="${p.url}"><meta http-equiv="refresh" content="0; url=${p.url}"><a href="${p.url}">${esc(p.title)}</a>`);
+          const to = prefixFor(a) + p.url.slice(1);
+          fs.writeFileSync(af, `<!doctype html><meta charset="utf-8"><title>Redirecting…</title><link rel="canonical" href="${data.site.url}${p.url}"><meta http-equiv="refresh" content="0; url=${to}"><a href="${to}">${esc(p.title)}</a>`);
         }
       }
       // Netlify: real 301s for aliases; the "!" makes them win over the refresh pages above.
       fs.writeFileSync(path.join(outDir, '_redirects'),
         data.pages.flatMap((p) => p.aliases.map((a) => `${a} ${p.url} 301!`)).join('\n') + '\n');
-      fs.writeFileSync(path.join(outDir, '404.html'), page(`Page not found - ${data.site.title}`,
-        '<div class="page"><h1>Page not found</h1><p>Sorry, that page doesn’t exist. Try the <a href="/">home page</a>.</p></div>'));
+      fs.writeFileSync(path.join(outDir, '404.html'), page('/', `Page not found - ${data.site.title}`,
+        '<div class="page"><h1>Page not found</h1><p>Sorry, that page doesn’t exist. Try the <a href="/">home page</a>.</p></div>')
+        .replace(/<head>/i, `$&<base href="${BASE}">`));
       fs.writeFileSync(path.join(outDir, 'sitemap.xml'),
         `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
         data.pages.map((p) => `  <url><loc>${data.site.url}${p.url}</loc></url>`).join('\n') + '\n</urlset>\n');

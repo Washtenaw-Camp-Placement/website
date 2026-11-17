@@ -2,39 +2,63 @@
 //
 // Every page is also a real HTML file, so this is only an enhancement:
 // with JavaScript off, links just load the next page normally.
+//
+// The site can live at any base path (https://washtenawcampplacement.org/ or
+// https://<org>.github.io/website/). Built pages use relative links for that;
+// routes below are keyed by the path under the site root, e.g. "/team/".
 
 import routes from 'virtual:pages';
 
 const main = document.getElementById('content');
 
+// Site root: this script sits one folder down from it (assets/ when built, src/ in dev).
+const scriptUrl = import.meta.url;
+const ROOT = new URL('../', scriptUrl);
+
 function normalize(pathname) {
   return pathname.endsWith('/') ? pathname : `${pathname}/`;
 }
 
-function lookup(pathname) {
-  let r = routes[normalize(pathname)];
+// Route key for a URL on this site ("/team/"), or null if it is outside the site.
+function routeOf(url) {
+  if (url.origin !== ROOT.origin || !url.pathname.startsWith(ROOT.pathname)) return null;
+  return normalize('/' + url.pathname.slice(ROOT.pathname.length));
+}
+
+function lookup(route) {
+  let r = route && routes[route];
   if (r && r.redirect) r = routes[r.redirect];
   return r;
 }
 
-function markCurrent(pathname) {
-  const here = normalize(pathname);
+// Page HTML in the route table uses root-absolute links ("/team/"); point them at the real root.
+const rebase = (html) => html.replace(/(\s(?:href|src)=")\/(?!\/)/g, `$1${ROOT.pathname}`);
+
+// Relative links in the pre-rendered page are relative to the URL it was loaded from.
+// Pin them to absolute URLs before client-side navigation changes that URL.
+for (const el of document.querySelectorAll('a[href], img[src]')) {
+  const attr = el.tagName === 'A' ? 'href' : 'src';
+  if (!/^(#|\/|[a-z][a-z0-9+.-]*:)/i.test(el.getAttribute(attr))) el.setAttribute(attr, el[attr]);
+}
+
+function markCurrent(route) {
   for (const a of document.querySelectorAll('.site-nav a')) {
-    if (normalize(new URL(a.href).pathname) === here) a.setAttribute('aria-current', 'page');
+    if (routeOf(new URL(a.href)) === route) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   }
 }
 
-function render(pathname, { scroll = true } = {}) {
-  const r = lookup(pathname);
+function render(url, { scroll = true } = {}) {
+  const route = routeOf(url);
+  const r = lookup(route);
   if (!r) return false;
   // Pre-rendered HTML is already in place on first load; don't redo it.
   if (main.dataset.path || !main.firstElementChild) {
-    main.innerHTML = r.html;
+    main.innerHTML = rebase(r.html);
     document.title = r.title;
   }
-  main.dataset.path = normalize(pathname);
-  markCurrent(pathname);
+  main.dataset.path = route;
+  markCurrent(route);
   if (scroll) window.scrollTo(0, 0);
   return true;
 }
@@ -45,16 +69,16 @@ document.addEventListener('click', (e) => {
   if (a.target === '_blank' || a.hasAttribute('download')) return;
   const url = new URL(a.href, location.href);
   if (url.origin !== location.origin || url.hash && url.pathname === location.pathname) return;
-  if (!lookup(url.pathname)) return;
+  const route = routeOf(url);
+  if (!lookup(route)) return;
   e.preventDefault();
-  history.pushState(null, '', normalize(url.pathname) + url.search + url.hash);
-  render(url.pathname);
+  history.pushState(null, '', new URL(route.slice(1), ROOT).href + url.search + url.hash);
+  render(url);
   document.body.classList.remove('menu-open');
   document.querySelector('.menu-toggle')?.setAttribute('aria-expanded', 'false');
 });
 
-window.addEventListener('popstate', () => render(location.pathname, { scroll: false }));
-
+window.addEventListener('popstate', () => render(new URL(location.href), { scroll: false }));
 // Mobile menu.
 document.querySelector('.menu-toggle')?.addEventListener('click', (e) => {
   const open = document.body.classList.toggle('menu-open');
@@ -99,6 +123,6 @@ if (langLink) {
   });
 }
 
-if (!render(location.pathname, { scroll: false })) {
-  main.innerHTML = '<div class="page"><h1>Page not found</h1><p>Sorry, that page doesn’t exist. Try the <a href="/">home page</a>.</p></div>';
+if (!render(new URL(location.href), { scroll: false })) {
+  main.innerHTML = `<div class="page"><h1>Page not found</h1><p>Sorry, that page doesn’t exist. Try the <a href="${ROOT.pathname}">home page</a>.</p></div>`;
 }
